@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+.env
+faiss_index/
+docs/
+*.pdf
+*.txt
+.pytest_cache/
+.DS_Store
