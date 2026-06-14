@@ -25,22 +25,33 @@ graph TD
     Client([Client Application]) -->|HTTP Requests| APIGateway
     
     subgraph FastAPI Backend System
-        APIGateway[API Gateway] -->|Auth & Rate Limiting| Security[Security Layer]
+        APIGateway[API Gateway] -->|API Key & slowapi| Security[Security & Rate Limiting]
         Security --> Middleware[Observability Middleware]
         Middleware --> Routes[API Routes]
         
-        Routes -->|/ask-llm| AgentService[Single Agent Service]
-        Routes -->|/multi-agent| MultiAgent[Multi-Agent Workflow]
+        Routes -->|/health, /ready| Probes[System Probes]
+        Routes -->|/ask-llm, /summarize-llm| CoreLLM[Core LLM Service]
+        Routes -->|/chat| Chat[Conversational Memory]
         Routes -->|/rag-pdf, /rag-txt| RAG[RAG Engine]
-        Routes -->|/chat| Memory[Conversational Memory]
+        Routes -->|/agent| SingleAgent[Single Agent Workflow]
+        Routes -->|/multi-agent| MultiAgent[Multi-Agent Orchestration]
+
+        CoreLLM -.->|Async Triggers| BGTasks[Background Tasks]
     end
     
     subgraph External Services & Storage
-        RAG -->|Similarity Search| FAISS[(FAISS Vector DB)]
-        AgentService -.->|API Call| Groq(Groq Cloud LLM)
+        RAG <-->|Similarity Search| FAISS[(FAISS Vector DB)]
+        Chat <-->|Context Mapping| StateStore[(In-Memory/Redis)]
+        BGTasks -->|Simulated IO| DB[(Database)]
+
+        CoreLLM -.->|API Call| Groq(Groq Cloud LLM)
+        SingleAgent -.->|API Call| Groq
         MultiAgent -.->|API Call| Groq
         RAG -.->|API Call| Groq
-        Memory -.->|API Call| Groq
+        Chat -.->|API Call| Groq
+
+        Probes -.->|Readiness Ping| Groq
+        Probes -.->|Readiness Ping| FAISS
     end
     
     subgraph Telemetry
